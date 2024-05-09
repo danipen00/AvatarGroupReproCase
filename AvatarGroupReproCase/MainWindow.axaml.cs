@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Avalonia;
 using Avalonia.Controls;
@@ -18,16 +19,28 @@ public partial class MainWindow : Window
         mTreeDataGrid = new TreeDataGrid();
         mTreeDataGrid.CellPrepared += TreeDataGridOnCellPrepared;
 
-        List<string> items = new List<string>();
+        List<List<string>> items = new List<List<string>>();
         for (int i = 0; i < 10000; i++)
         {
-            items.Add("user" + i.ToString() + "@company.com");
+            List<string> users = new List<string>();
+            items.Add(users);
+            if (i % 2 == 0)
+            {
+                users.Add("user" + i.ToString() + "@company.com");
+                users.Add("user" + i.ToString() + "@company.com");
+                users.Add("user" + i.ToString() + "@company.com");
+                users.Add("user" + i.ToString() + "@company.com");
+            }
+            else
+            {
+                users.Add("user" + i.ToString() + "@company.com");
+            }
         }
 
-        FlatTreeDataGridSource<string> treeDataGridSource = new FlatTreeDataGridSource<string>(items);
-        treeDataGridSource.Columns.Add(new TemplateColumn<string>(
+        FlatTreeDataGridSource<List<string>> treeDataGridSource = new FlatTreeDataGridSource<List<string>>(items);
+        treeDataGridSource.Columns.Add(new TemplateColumn<List<string>>(
             "Item",
-            new FuncDataTemplate<string>((string node, INameScope ns) =>
+            new FuncDataTemplate<List<string>>((List<string> node, INameScope ns) =>
             {
                 return new AvatarCellPanel();
             }, true)));
@@ -41,24 +54,42 @@ public partial class MainWindow : Window
 
     void TreeDataGridOnCellPrepared(object? sender, TreeDataGridCellEventArgs e)
     {
+        void CellLayoutUpdated(object? sender, EventArgs e)
+        {
+            var cc = (TreeDataGridCell)sender!;
+            AvatarCellPanel? avatarCellPanel = cc.FindDescendantOfType<AvatarCellPanel>();
+            List<string?> model = (List<string?>)mTreeDataGrid.Rows?[cc.RowIndex].Model!;
+            avatarCellPanel!.SetData(model);
+            cc.LayoutUpdated -= CellLayoutUpdated;
+        }
+
+
         Control cellControl = e.Cell;
+
 
         AvatarCellPanel? avatarCellPanel =
             cellControl.FindDescendantOfType<AvatarCellPanel>();
 
-        string? model = (string)mTreeDataGrid.Rows?[e.RowIndex].Model!;
 
-        avatarCellPanel?.SetData(model);
+        if (avatarCellPanel != null)
+        {
+            List<string?> model = (List<string?>)mTreeDataGrid.Rows?[e.RowIndex].Model!;
+            avatarCellPanel?.SetData(model);
+        }
+        else
+        {
+            cellControl.LayoutUpdated += CellLayoutUpdated;
+        }
     }
 
     readonly TreeDataGrid mTreeDataGrid;
 
     class AvatarCellPanel : DockPanel
     {
-        internal void SetData(string? data)
+        internal void SetData(List<string?> data)
         {
-            mTextBlock.Text = data;
-            mAvatarGroup.SetAvatars(new List<string?> { data });
+            mTextBlock.Text = data[0];
+            mAvatarGroup.SetAvatars(data);
         }
 
         internal AvatarCellPanel()
